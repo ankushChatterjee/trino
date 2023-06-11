@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.trino.plugin.hive.metastore.glue;
+package io.trino.plugin.hive;
 
 import io.airlift.stats.CounterStat;
 import io.airlift.stats.TimeStat;
@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
-public class GlueSdkClientStats
+public class AwsSdkV2ClientStats
 {
     private final CounterStat awsRequestCount = new CounterStat();
     private final CounterStat awsRetryCount = new CounterStat();
@@ -101,17 +101,17 @@ public class GlueSdkClientStats
         return awsHttpClientPoolPendingCount.get();
     }
 
-    public GlueSdkClientRequestMetricsPublisher newRequestMetricsPublisher()
+    public AwsSdkV2ClientRequestMetricsPublisher newRequestMetricsPublisher()
     {
-        return new GlueSdkClientRequestMetricsPublisher(this);
+        return new AwsSdkV2ClientRequestMetricsPublisher(this);
     }
 
-    public static class GlueSdkClientRequestMetricsPublisher
+    public static class AwsSdkV2ClientRequestMetricsPublisher
             implements MetricPublisher
     {
-        private final GlueSdkClientStats stats;
+        private final AwsSdkV2ClientStats stats;
 
-        protected GlueSdkClientRequestMetricsPublisher(GlueSdkClientStats stats)
+        protected AwsSdkV2ClientRequestMetricsPublisher(AwsSdkV2ClientStats stats)
         {
             this.stats = requireNonNull(stats, "stats is null");
         }
