@@ -24,7 +24,7 @@ import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.CommitStateUnknownException;
 import org.apache.iceberg.io.FileIO;
-import software.amazon.awssdk.services.glue.GlueAsyncClient;
+import software.amazon.awssdk.services.glue.GlueClient;
 import software.amazon.awssdk.services.glue.model.AlreadyExistsException;
 import software.amazon.awssdk.services.glue.model.ConcurrentModificationException;
 import software.amazon.awssdk.services.glue.model.CreateTableRequest;
@@ -44,7 +44,6 @@ import java.util.Optional;
 import static com.google.common.base.Verify.verify;
 import static io.trino.plugin.hive.ViewReaderUtil.isHiveOrPrestoView;
 import static io.trino.plugin.hive.ViewReaderUtil.isPrestoView;
-import static io.trino.plugin.hive.metastore.glue.AwsSdkUtil.awsSyncRequest;
 import static io.trino.plugin.hive.metastore.glue.converter.GlueToTrinoConverter.getTableParameters;
 import static io.trino.plugin.hive.metastore.glue.converter.GlueToTrinoConverter.getTableType;
 import static io.trino.plugin.hive.util.HiveUtil.isIcebergTable;
@@ -58,14 +57,14 @@ import static org.apache.iceberg.BaseMetastoreTableOperations.PREVIOUS_METADATA_
 public class GlueIcebergTableOperations
         extends AbstractIcebergTableOperations
 {
-    private final GlueAsyncClient glueClient;
+    private final GlueClient glueClient;
     private final GlueMetastoreStats stats;
 
     @Nullable
     private String glueVersionId;
 
     protected GlueIcebergTableOperations(
-            GlueAsyncClient glueClient,
+            GlueClient glueClient,
             GlueMetastoreStats stats,
             FileIO fileIo,
             ConnectorSession session,
@@ -113,7 +112,8 @@ public class GlueIcebergTableOperations
                 .tableInput(tableInput)
                 .build();
         try {
-            awsSyncRequest(glueClient::createTable, createTableRequest, stats.getCreateTable());
+            stats.getCreateTable().call(() ->
+                    glueClient.createTable(createTableRequest));
         }
         catch (AlreadyExistsException
                | EntityNotFoundException
@@ -143,7 +143,8 @@ public class GlueIcebergTableOperations
                 .versionId(glueVersionId)
                 .build();
         try {
-            awsSyncRequest(glueClient::updateTable, updateTableRequest, stats.getUpdateTable());
+            stats.getUpdateTable().call(() ->
+                    glueClient.updateTable(updateTableRequest));
         }
         catch (ConcurrentModificationException e) {
             // CommitFailedException is handled as a special case in the Iceberg library. This commit will automatically retry
@@ -168,7 +169,9 @@ public class GlueIcebergTableOperations
                     .databaseName(database)
                     .name(tableName)
                     .build();
-            return awsSyncRequest(glueClient::getTable, getTableRequest, stats.getGetTable()).table();
+            return stats.getGetTable().call(
+                    () -> glueClient.getTable(getTableRequest)
+            ).table();
         }
         catch (EntityNotFoundException e) {
             throw new TableNotFoundException(getSchemaTableName(), e);
